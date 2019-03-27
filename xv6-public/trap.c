@@ -23,6 +23,9 @@ tvinit(void)
     SETGATE(idt[i], 0, SEG_KCODE<<3, vectors[i], 0);
   SETGATE(idt[T_SYSCALL], 1, SEG_KCODE<<3, vectors[T_SYSCALL], DPL_USER);
 
+  // user_app interrupt
+  SETGATE(idt[T_USERAPP], 1, SEG_KCODE<<3, vectors[T_USERAPP], DPL_USER);
+
   initlock(&tickslock, "time");
 }
 
@@ -77,6 +80,11 @@ trap(struct trapframe *tf)
             cpuid(), tf->cs, tf->eip);
     lapiceoi();
     break;
+  case T_USERAPP:
+	cprintf("user interrupt %d called!\n",
+			tf->trapno);
+	myproc()->killed = 1;
+	break;
 
   //PAGEBREAK: 13
   default:

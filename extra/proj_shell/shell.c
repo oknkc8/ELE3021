@@ -41,8 +41,8 @@ void runcmd(char** pcmd){
 }
 
 int main(int argc, char* argv[]){
-	char buf[100];
-	char *cmds[10];
+	char *buf = (char*)malloc(sizeof(char)*1005);
+	char **cmds = (char**)malloc(sizeof(char*)*105);
 	int w, flag_batch = 0;
 	FILE *fo = stdin;
 
@@ -52,12 +52,12 @@ int main(int argc, char* argv[]){
 	}
 
 	while(getcmd(buf, fo, flag_batch)){
+		if(flag_batch)
+			fprintf(stdout, "%s\n", buf);
+
 		if(!strcmp(buf, "quit")){
 			break;
 		}
-
-		if(flag_batch)
-			fprintf(stdout, "%s\n", buf);
 
 		char *tmp_cmd = strtok(buf, ";");
 		int cnt_cmd = 0, flag = 0;
@@ -80,8 +80,12 @@ int main(int argc, char* argv[]){
 			if(fork() == 0)
 				runcmd(pcmd);
 			wait(&w);
+			free(pcmd);
 		}
 	}
+
+	free(buf);
+	free(cmds);
 
 	exit(0);
 }

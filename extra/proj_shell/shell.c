@@ -11,9 +11,9 @@
 int getcmd(char* buf, FILE *fin, int flag_batch){
 	if(!flag_batch)
 		printf("prompt> ");
-	memset(buf, 0, sizeof(buf)*100);
+	memset(buf, 0, sizeof(char)*1005);
 
-	if(!fgets(buf, 100, fin)) 
+	if(!fgets(buf, 1005, fin)) 
 		return 0;
 	buf[strlen(buf) - 1] = '\0';
 	

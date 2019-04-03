@@ -192,5 +192,8 @@ int				myfunction(char*);
 // getppid.c
 int				getppid(void);
 
+// prac_sys_yield.c
+void			callyield(void);
+
 // number of elements in fixed-size array
 #define NELEM(x) (sizeof(x)/sizeof((x)[0]))

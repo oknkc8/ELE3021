@@ -16,14 +16,17 @@ main(int argc, char *argv[]){
 		}
 		else if(pid == 0){		// child process
 			//callyield();
+			yield();
 			printf(1, "Child\n");
-			callyield();
+			//callyield();
+			yield();
 		}
 		else{					// parent process
 			printf(1, "Parent\n");
 //			callyield();
 			//wait();
-			callyield();
+			//callyield();
+			yield();
 		}
 //		callyield();
 	}

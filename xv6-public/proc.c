@@ -89,6 +89,13 @@ found:
   p->state = EMBRYO;
   p->pid = nextpid++;
 
+  //#ifdef FCFS_SCHED
+
+  p->create_time = ticks;
+  p->running_time = 0;
+  p->ready_time = 0;
+  p->sleep_time = 0;
+
   release(&ptable.lock);
 
   // Allocate kernel stack.
@@ -130,6 +137,9 @@ userinit(void)
     panic("userinit: out of memory?");
   inituvm(p->pgdir, _binary_initcode_start, (int)_binary_initcode_size);
   p->sz = PGSIZE;
+
+  p->create_time = ticks; // setting for scheduler
+
   memset(p->tf, 0, sizeof(*p->tf));
   p->tf->cs = (SEG_UCODE << 3) | DPL_USER;
   p->tf->ds = (SEG_UDATA << 3) | DPL_USER;
@@ -294,6 +304,9 @@ wait(void)
         p->parent = 0;
         p->name[0] = 0;
         p->killed = 0;
+
+        p->create_time = 0;
+
         p->state = UNUSED;
         release(&ptable.lock);
         return pid;
@@ -322,7 +335,7 @@ wait(void)
 void
 scheduler(void)
 {
-  struct proc *p;
+  //struct proc *p;
   struct cpu *c = mycpu();
   c->proc = 0;
   
@@ -332,26 +345,43 @@ scheduler(void)
 
     // Loop over process table looking for process to run.
     acquire(&ptable.lock);
-    for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
-      if(p->state != RUNNABLE)
-        continue;
+    #ifdef FCFS_SCHED
+      struct proc *p;
+      struct proc *min_create_p = 0;
+      for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){      
+          if(p->state != RUNNABLE)
+            continue;
 
-      // Switch to chosen process.  It is the process's job
-      // to release ptable.lock and then reacquire it
-      // before jumping back to us.
-      c->proc = p;
-      switchuvm(p);
-      p->state = RUNNING;
+          if(min_create_p == 0) min_create_p = p;
+          else{
+            //if(p->create_time < min_create_p->create_time){
+              if(p->pid < min_create_p->pid){
+              min_create_p = p;
+            }
+          }
+      }
 
-      swtch(&(c->scheduler), p->context);
-      switchkvm();
+      if(min_create_p != 0){
+        // Switch to chosen process.  It is the process's job
+        // to release ptable.lock and then reacquire it
+        // before jumping back to us.
+        p = min_create_p;
 
-      // Process is done running for now.
-      // It should have changed its p->state before coming back.
-      c->proc = 0;
-    }
+        c->proc = p;
+        switchuvm(p);
+        p->state = RUNNING;
+
+        swtch(&(c->scheduler), p->context);
+        switchkvm();
+
+        // Process is done running for now.
+        // It should have changed its p->state before coming back.
+        c->proc = 0;
+      }
+    
+    #else
+    #endif
     release(&ptable.lock);
-
   }
 }
 
@@ -531,4 +561,29 @@ procdump(void)
     }
     cprintf("\n");
   }
+}
+
+
+void update_ticks(){
+  struct proc *p;
+  acquire(&ptable.lock);
+
+  for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
+    switch (p->state){
+    case SLEEPING:
+      p->sleep_time++;
+      break;
+    case RUNNABLE:
+      p->ready_time++;
+      break;
+    case RUNNING:
+      p->running_time++;
+      break;
+    
+    default:
+      break;
+    }
+  }
+
+  release(&ptable.lock);
 }

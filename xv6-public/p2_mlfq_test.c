@@ -3,8 +3,8 @@
 #include "user.h"
 
 #define NUM_CHILD 5
-#define NUM_LOOP1 500000
-#define NUM_LOOP2 500000
+#define NUM_LOOP1 50000
+#define NUM_LOOP2 100000
 #define NUM_LOOP3 20000
 #define NUM_LOOP4 50000
 
@@ -99,7 +99,7 @@ int main(int argc, char **argv) {
       cnt[getlev()]++;
     printf(1, "process %d: L0=%d, L1=%d\n", pid, cnt[0], cnt[1]);
     if (me == NUM_CHILD - 1)
-      monopolize(2017029807);
+      monopolize(2017029808);
   }  
 
   exit_child(p);

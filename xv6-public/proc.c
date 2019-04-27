@@ -676,6 +676,7 @@ monopolize(int password)
     else
       cprintf("Failed to unlock monopolize! : Wrong Password\n");
     cprintf("killed process %d\n", myproc()->pid);
+    use_monop = 0;
     return;
   }
 

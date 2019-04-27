@@ -34,6 +34,11 @@ struct context {
 
 enum procstate { UNUSED, EMBRYO, SLEEPING, RUNNABLE, RUNNING, ZOMBIE };
 
+// MLFQ
+#define L0_TQ 4
+#define L1_TQ 8
+int use_monop;
+
 // Per-process state
 struct proc {
   uint sz;                     // Size of process memory (bytes)
@@ -50,11 +55,12 @@ struct proc {
   struct inode *cwd;           // Current directory
   char name[16];               // Process name (debugging)
   
-  //uint priority;               // Process priority (MLFQ)
+  uint priority;               // Process priority (MLFQ)
   int create_time;             // Process creation time
   int running_time;            // Process running time(ticks) after creation
   int ready_time;              // Process READY state time
   int sleep_time;              // Process SLEEP state time
+  int q_lev;                   // Process queue level (MLFQ)
 };
 
 // Process memory is laid out contiguously, low addresses first:
@@ -62,4 +68,6 @@ struct proc {
 //   original data and bss
 //   fixed-size stack
 //   expandable heap
-void update_ticks();
+
+void update_ticks(void);
+void priority_boosting(void);

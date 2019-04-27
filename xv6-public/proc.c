@@ -89,12 +89,12 @@ found:
   p->state = EMBRYO;
   p->pid = nextpid++;
 
-  //#ifdef FCFS_SCHED
-
   p->create_time = ticks;
   p->running_time = 0;
   p->ready_time = 0;
   p->sleep_time = 0;
+  p->q_lev = 0;
+  p->priority = 0;
 
   release(&ptable.lock);
 
@@ -129,6 +129,8 @@ userinit(void)
 {
   struct proc *p;
   extern char _binary_initcode_start[], _binary_initcode_size[];
+
+  use_monop = 0;
 
   p = allocproc();
   
@@ -348,16 +350,17 @@ scheduler(void)
     #ifdef FCFS_SCHED
       struct proc *p;
       struct proc *min_create_p = 0;
+      
       for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){      
           if(p->state != RUNNABLE)
             continue;
 
-          if(min_create_p == 0) min_create_p = p;
+          if(min_create_p == 0)
+            min_create_p = p;
           else{
             //if(p->create_time < min_create_p->create_time){
-              if(p->pid < min_create_p->pid){
+            if(p->pid < min_create_p->pid)
               min_create_p = p;
-            }
           }
       }
 
@@ -379,9 +382,85 @@ scheduler(void)
         c->proc = 0;
       }
     
+    #elif MLFQ_SCHED
+      if(use_monop){
+        release(&ptable.lock);
+        continue;
+      }
+
+      struct proc *p;
+      struct proc *select_p = 0;
+
+      // L0 : Round Robin Policy
+      for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
+        if(p->state != RUNNABLE)
+          continue;
+        
+        if(p->q_lev == 0){
+          select_p = p;
+          break;
+        }
+      }
+
+      // If no SLEEPING process in L0, switch
+      if(select_p != 0){
+        p = select_p;
+
+        c->proc = p;
+        switchuvm(p);
+        p->state = RUNNING;
+
+        swtch(&(c->scheduler), p->context);
+        switchkvm();
+
+        // Process is done running for now.
+        // It should have changed its p->state before coming back.
+        c->proc = 0;
+      }
+
+      // If all proceesses in L0 is SLEEPING, down to L1
+      else{
+        //cprintf("L1\n");
+        // L1 : Priority Policy
+        for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
+          if(p->state != RUNNABLE)
+            continue;
+
+          if(p->q_lev == 1){
+            if(select_p == 0)
+              select_p = p;
+            else{
+              if( (p->priority > select_p->priority) ||
+                (p->priority == select_p->priority && p->pid < select_p->pid) )
+                select_p = p;
+            }
+          }
+        }
+
+        if(select_p != 0){
+          p = select_p;
+          c->proc = p;
+          switchuvm(p);
+          p->state = RUNNING;
+
+          swtch(&(c->scheduler), p->context);
+          switchkvm();
+
+          // Process is done running for now.
+          // It should have changed its p->state before coming back.
+          c->proc = 0;
+        }
+      }
+
     #else
     #endif
     release(&ptable.lock);
+/*
+    #ifdef MLFQ_SCHED
+      if(ticks % 100 == 0)
+        priority_boosting();
+    #else
+    #endif*/
   }
 }
 
@@ -417,6 +496,7 @@ yield(void)
 {
   acquire(&ptable.lock);  //DOC: yieldlock
   myproc()->state = RUNNABLE;
+  myproc()->running_time = 0;
   sched();
   release(&ptable.lock);
 }
@@ -563,8 +643,56 @@ procdump(void)
   }
 }
 
+int
+getlev(void)
+{
+  return myproc()->q_lev;
+}
 
-void update_ticks(){
+void
+setpriority(int pid, int priority)
+{
+  struct proc *p;
+  acquire(&ptable.lock);
+
+  //cprintf("%d = %d\n", pid, priority);
+  for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
+    if(p->pid == pid){
+      p->priority = priority;
+      break;
+    }
+  }
+
+  release(&ptable.lock);
+}
+
+void
+monopolize(int password)
+{
+  if(password != 2017029807){
+    myproc()->killed = 1;
+    if(!use_monop)
+      cprintf("Failed to monopolize! : Wrong Password\n");
+    else
+      cprintf("Failed to unlock monopolize! : Wrong Password\n");
+    cprintf("killed process %d\n", myproc()->pid);
+    return;
+  }
+
+  if(use_monop){
+    use_monop = 0;
+    myproc()->q_lev = 0;
+    myproc()->priority = 0;
+    return;
+  }
+  else{
+    use_monop = 1;
+  }
+}
+
+void
+update_ticks(void)
+{
   struct proc *p;
   acquire(&ptable.lock);
 
@@ -583,6 +711,22 @@ void update_ticks(){
     default:
       break;
     }
+  }
+
+  release(&ptable.lock);
+}
+
+void
+priority_boosting(void)
+{
+  //cprintf("boosting\n");
+  struct proc *p;
+  acquire(&ptable.lock);
+
+  for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
+    p->q_lev = 0;
+    p->priority = 0;
+    p->running_time = 0;
   }
 
   release(&ptable.lock);

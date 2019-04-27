@@ -114,8 +114,29 @@ trap(struct trapframe *tf)
     if(myproc() && myproc()->state == RUNNING && myproc()->running_time >= 100){
       myproc()->killed = 1;
       cprintf("killed process %d\n", myproc()->pid);
-      //myproc()->state = RUNNABLE;
     }
+
+  #elif MLFQ_SCHED
+    if(myproc() && myproc()->state == RUNNING && !use_monop){
+      // If running time is equal to time quantum when process in L0,
+      // move process to L1 and reset running time
+      if(myproc()->q_lev == 0 && myproc()->running_time >= L0_TQ){
+        //cprintf("go to L1~\n");
+        myproc()->q_lev = 1;
+        yield();
+      }
+
+      // If running time is equal to time quantum when process in L1,
+      // decrease priority and reset running time
+      else if(myproc()->q_lev == 1 && myproc()->running_time >= L1_TQ){
+        myproc()->priority = (myproc()->priority == 0) ? 0 : myproc()->priority - 1;
+        yield();
+      }
+    }
+
+    if(ticks%100 == 0 && !use_monop)
+      priority_boosting();
+
   #else
     // Force process to give up CPU on clock tick.
     // If interrupts were on while locks held, would need to check nlock.

@@ -121,7 +121,6 @@ trap(struct trapframe *tf)
       // If running time is equal to time quantum when process in L0,
       // move process to L1 and reset running time
       if(myproc()->q_lev == 0 && myproc()->running_time >= L0_TQ){
-        //cprintf("go to L1~\n");
         myproc()->q_lev = 1;
         yield();
       }

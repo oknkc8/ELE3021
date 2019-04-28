@@ -89,10 +89,7 @@ found:
   p->state = EMBRYO;
   p->pid = nextpid++;
 
-  p->create_time = ticks;
   p->running_time = 0;
-  p->ready_time = 0;
-  p->sleep_time = 0;
   p->q_lev = 0;
   p->priority = 0;
 
@@ -139,9 +136,6 @@ userinit(void)
     panic("userinit: out of memory?");
   inituvm(p->pgdir, _binary_initcode_start, (int)_binary_initcode_size);
   p->sz = PGSIZE;
-
-  p->create_time = ticks; // setting for scheduler
-
   memset(p->tf, 0, sizeof(*p->tf));
   p->tf->cs = (SEG_UCODE << 3) | DPL_USER;
   p->tf->ds = (SEG_UDATA << 3) | DPL_USER;
@@ -306,9 +300,6 @@ wait(void)
         p->parent = 0;
         p->name[0] = 0;
         p->killed = 0;
-
-        p->create_time = 0;
-
         p->state = UNUSED;
         release(&ptable.lock);
         return pid;
@@ -358,7 +349,6 @@ scheduler(void)
           if(min_create_p == 0)
             min_create_p = p;
           else{
-            //if(p->create_time < min_create_p->create_time){
             if(p->pid < min_create_p->pid)
               min_create_p = p;
           }
@@ -420,7 +410,6 @@ scheduler(void)
 
       // If all proceesses in L0 is SLEEPING, down to L1
       else{
-        //cprintf("L1\n");
         // L1 : Priority Policy
         for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
           if(p->state != RUNNABLE)
@@ -453,14 +442,23 @@ scheduler(void)
       }
 
     #else
+      for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
+        if(p->state != RUNNABLE)
+          continue;
+
+        c->proc = p;
+        switchuvm(p);
+        p->state = RUNNING;
+
+        swtch(&(c->scheduler), p->context);
+        switchkvm();
+
+        // Process is done running for now.
+        // It should have changed its p->state before coming back.
+        c->proc = 0;
+      }
     #endif
     release(&ptable.lock);
-/*
-    #ifdef MLFQ_SCHED
-      if(ticks % 100 == 0)
-        priority_boosting();
-    #else
-    #endif*/
   }
 }
 
@@ -655,7 +653,6 @@ setpriority(int pid, int priority)
   struct proc *p;
   acquire(&ptable.lock);
 
-  //cprintf("%d = %d\n", pid, priority);
   for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
     if(p->pid == pid){
       p->priority = priority;
@@ -699,12 +696,6 @@ update_ticks(void)
 
   for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
     switch (p->state){
-    case SLEEPING:
-      p->sleep_time++;
-      break;
-    case RUNNABLE:
-      p->ready_time++;
-      break;
     case RUNNING:
       p->running_time++;
       break;
@@ -720,7 +711,6 @@ update_ticks(void)
 void
 priority_boosting(void)
 {
-  //cprintf("boosting\n");
   struct proc *p;
   acquire(&ptable.lock);
 

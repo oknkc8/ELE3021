@@ -328,7 +328,6 @@ wait(void)
 void
 scheduler(void)
 {
-  //struct proc *p;
   struct cpu *c = mycpu();
   c->proc = 0;
   
@@ -431,6 +430,7 @@ scheduler(void)
           c->proc = p;
           switchuvm(p);
           p->state = RUNNING;
+          p->running_time = 0;
 
           swtch(&(c->scheduler), p->context);
           switchkvm();
@@ -442,6 +442,7 @@ scheduler(void)
       }
 
     #else
+      struct proc *p;
       for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
         if(p->state != RUNNABLE)
           continue;

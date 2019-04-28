@@ -122,6 +122,7 @@ trap(struct trapframe *tf)
       // move process to L1 and reset running time
       if(myproc()->q_lev == 0 && myproc()->running_time >= L0_TQ){
         myproc()->q_lev = 1;
+        myproc()->running_time = 0;
         yield();
       }
 
@@ -129,6 +130,7 @@ trap(struct trapframe *tf)
       // decrease priority and reset running time
       else if(myproc()->q_lev == 1 && myproc()->running_time >= L1_TQ){
         myproc()->priority = (myproc()->priority == 0) ? 0 : myproc()->priority - 1;
+        myproc()->running_time = 0;
         yield();
       }
     }

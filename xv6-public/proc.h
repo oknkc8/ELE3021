@@ -57,7 +57,7 @@ struct proc {
   
   uint priority;               // Process priority (MLFQ)
   int create_time;             // Process creation time
-  int running_time;            // Process running time(ticks) after creation
+  int running_time;            // Process running time(ticks) after running start
   int ready_time;              // Process READY state time
   int sleep_time;              // Process SLEEP state time
   int q_lev;                   // Process queue level (MLFQ)

@@ -58,6 +58,11 @@ struct proc {
   uint priority;               // Process priority (MLFQ)
   int running_time;            // Process running time(ticks) after running start
   int q_lev;                   // Process queue level (MLFQ)
+
+  int is_thread;
+  char *ustack;
+  struct proc *joined_thread;
+  void *retval;
 };
 
 // Process memory is laid out contiguously, low addresses first:

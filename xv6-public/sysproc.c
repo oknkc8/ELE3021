@@ -128,3 +128,86 @@ sys_monopolize(void)
   monopolize(password);
   return 0;
 }
+
+int
+sys_tcopy(void)
+{
+  int func, arg, stack;
+
+  if(argint(0, &func) < 0)
+    return -1;
+  if(argint(1, &arg) < 0)
+    return -1;
+  if(argint(2, &stack) < 0)
+    return -1;
+
+  return tcopy(func, (void*)arg, (void*)stack);
+  
+}
+
+int
+sys_tjoin(void)
+{
+  int pid, stack, retval;
+
+  if(argint(0, &pid) < 0)
+    return -1;
+  if(argint(1, &stack) < 0)
+    return -1;
+  if(argint(2, &retval) < 0)
+    return -1;
+
+  return tjoin(pid, (void**)stack, (void**)retval);
+}
+
+int
+sys_texit(void)
+{
+  int retval;
+
+  if(argint(0, &retval) < 0)
+    return -1;
+
+  texit((void*)retval);
+  return 0;
+}
+/*
+int
+sys_thread_create(void)
+{
+  int thread, start_routine, arg;
+
+  if(argint(0, &thread) < 0)
+    return -1;
+  if(argint(1, &start_routine) < 0)
+    return -1;
+  if(argint(2, &arg) < 0)
+    return -1;
+
+  return thread_create((thread_t*)thread, (void*)start_routine, (void*)arg);
+  
+}
+
+int
+sys_thread_exit(void)
+{
+  int retval;
+
+  if(argint(0, &retval) < 0)
+    return -1;
+
+  return thread_exit((void*)retval);
+}
+
+int
+sys_thread_join(void)
+{
+  int thread, retval;
+
+  if(argint(0, &thread) < 0)
+    return -1;
+  if(argint(1, &retval) < 0)
+    return -1;
+
+  return thread_join((thread_t)thread, (void**)retval);
+}*/

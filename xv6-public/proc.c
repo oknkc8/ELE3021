@@ -218,6 +218,11 @@ fork(void)
 
   pid = np->pid;
 
+  np->joined_thread = 0;
+  np->retval = 0;
+  np->ustack = 0;
+  np->is_thread = 0;
+
   acquire(&ptable.lock);
 
   np->state = RUNNABLE;
@@ -258,10 +263,15 @@ exit(void)
   // Parent might be sleeping in wait().
   wakeup1(curproc->parent);
 
+  if(curproc->is_thread && !curproc->joined_thread)
+    wakeup1(curproc->joined_thread);
+
   // Pass abandoned children to init.
   for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
     if(p->parent == curproc){
       p->parent = initproc;
+      if(p->is_thread)
+        tclean(p);
       if(p->state == ZOMBIE)
         wakeup1(initproc);
     }
@@ -301,6 +311,10 @@ wait(void)
         p->name[0] = 0;
         p->killed = 0;
         p->state = UNUSED;
+        p->is_thread = 0;
+        p->ustack = 0;
+        p->retval = 0;
+        p->joined_thread = 0;
         release(&ptable.lock);
         return pid;
       }
@@ -723,3 +737,144 @@ priority_boosting(void)
 
   release(&ptable.lock);
 }
+
+// Threads
+
+int
+tcopy(int func, void* arg, void* stack)
+{
+  int i, pid;
+  struct proc *np;
+  struct proc *curproc = myproc();
+
+  // Allocate process.
+  if((np = allocproc()) == 0){
+      return -1;
+  }
+
+  // Copy process state from proc.
+  np->pgdir = curproc->pgdir;
+
+  void *stackTop = stack + PGSIZE;
+  *(uint*)(stackTop-8) = 0xffffffff;
+  *(uint*)(stackTop-4) = (uint)arg;
+
+  np->sz = curproc->sz;
+  np->parent = curproc;
+  *np->tf = *curproc->tf;
+
+  // Clear %eax so that fork returns 0 in the child.
+  np->tf->eax = 0;
+
+  for(i = 0; i < NOFILE; i++)
+      if(curproc->ofile[i])
+      np->ofile[i] = filedup(curproc->ofile[i]);
+  np->cwd = idup(curproc->cwd);
+
+  safestrcpy(np->name, curproc->name, sizeof(curproc->name));
+
+  pid = np->pid;
+
+  np->tf->eip = (int)func;
+  np->tf->esp = (int)stack + PGSIZE;
+  np->tf->esp -= 4;
+  
+  *(int*)np->tf->esp = (int)arg;
+  np->tf->esp -=4;
+  *(int*)np->tf->esp = 0;
+
+  np->ustack = stack;
+  np->is_thread = 1;
+
+  acquire(&ptable.lock);
+
+  np->state = RUNNABLE;
+
+  release(&ptable.lock);
+
+  return pid;
+}
+
+int
+tjoin(int pid, void** stack, void** retval)
+{
+  //find thread pid
+  struct proc *p;
+  struct proc *curproc = myproc();
+  acquire(&ptable.lock);
+  for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
+    if(p->pid == pid){
+      break;
+    }
+  }  
+ 
+  //wait until thread is in zombie state
+  p->joined_thread = curproc;
+  while(p->state != ZOMBIE){
+    sleep(curproc, &ptable.lock);
+  }
+
+  //retrieve user stack and return value
+  if(stack != 0) *stack = p->ustack;
+  if(retval != 0) *retval = p->retval;
+  
+  //clean thread
+  tclean(p);
+
+  release(&ptable.lock);
+  return 0;
+}
+
+void
+texit(void* retval)
+{
+  struct proc *curproc = myproc();
+  curproc->retval = retval;
+
+  exit();
+}
+
+void
+tclean(struct proc *p)
+{
+  kfree(p->kstack);
+  p->kstack = 0;
+  p->state = UNUSED;
+  p->pid = 0;
+  p->parent = 0;
+  p->name[0] = 0;
+  p->killed = 0;
+  p->joined_thread = 0;
+  p->ustack = 0;
+  p->retval = 0;
+  p->is_thread = 0;
+}
+/*
+int thread_create(thread_t *thread, void *(*start_routine)(void*), void *arg){
+    void *stack = (void*)malloc(4096);
+    
+    if((int)stack <= 0){
+        cprintf("E: failed to malloc new stack in thread_create\n");
+        return -1;
+    }
+    if((int)stack % PGSIZE){
+        stack += PGSIZE - ((int)stack % PGSIZE);
+    }
+
+    *thread = tcopy((int)start_routine, arg, stack);
+
+    return 0;
+}
+
+int thread_exit(void *retval){
+    texit(retval);
+    return 0;
+}
+
+int thread_join(thread_t thread, void **retval){
+    void *stack;
+    tjoin(thread, &stack, retval);
+    free(stack);
+    return 0;
+}
+*/

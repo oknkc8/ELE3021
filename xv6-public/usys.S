@@ -34,4 +34,7 @@ SYSCALL(getppid)
 SYSCALL(yield)
 SYSCALL(getlev)
 SYSCALL(setpriority)
-SYSCALL(monopolize);
+SYSCALL(monopolize)
+SYSCALL(tcopy)
+SYSCALL(tjoin)
+SYSCALL(texit)

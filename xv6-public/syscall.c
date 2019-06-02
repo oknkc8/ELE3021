@@ -109,12 +109,9 @@ extern int sys_yield(void);
 extern int sys_getlev(void);
 extern int sys_setpriority(void);
 extern int sys_monopolize(void);
-extern int sys_tcopy(void);
-extern int sys_tjoin(void);
-extern int sys_texit(void);
-//extern int sys_thread_create(void);
-//extern int sys_thread_exit(void);
-//extern int sys_thread_join(void);
+extern int sys_thread_create(void);
+extern int sys_thread_exit(void);
+extern int sys_thread_join(void);
 
 static int (*syscalls[])(void) = {
 [SYS_fork]    sys_fork,
@@ -144,14 +141,10 @@ static int (*syscalls[])(void) = {
 [SYS_getlev] sys_getlev,
 [SYS_setpriority] sys_setpriority,
 [SYS_monopolize] sys_monopolize,
-[SYS_tcopy] sys_tcopy,
-[SYS_tjoin] sys_tjoin,
-[SYS_texit] sys_texit,
+[SYS_thread_create] sys_thread_create,
+[SYS_thread_exit] sys_thread_exit,
+[SYS_thread_join] sys_thread_join,
 };
-//[SYS_thread_create] sys_thread_create,
-//[SYS_thread_exit] sys_thread_exit,
-//[SYS_thread_join] sys_thread_join,
-//};
 
 void
 syscall(void)

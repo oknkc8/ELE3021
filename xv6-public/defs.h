@@ -123,12 +123,7 @@ void            yield(void);
 int             getlev(void);
 void            setpriority(int pid, int priority);
 void            monopolize(int password);
-int				tcopy(int, void*, void*);
-int				tjoin(int, void**, void**);
-void			texit(void*);
-void			tclean(struct proc*);
-
-int				thread_create(thread_t*, void *(*start_routine)(void*), void*);
+int             thread_create(thread_t *thread, void *(*start_routine)(void*), void *arg);
 int				thread_exit(void*);
 int				thread_join(thread_t, void**);
 

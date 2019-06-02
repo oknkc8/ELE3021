@@ -26,9 +26,6 @@
 #define SYS_getlev 25
 #define SYS_setpriority 26
 #define SYS_monopolize 27
-#define SYS_tcopy 28
-#define SYS_tjoin 29
-#define SYS_texit 30
-//#define SYS_thread_create 31
-//#define SYS_thread_exit 32
-//#define SYS_thread_join 33
+#define SYS_thread_create 28
+#define SYS_thread_exit 29
+#define SYS_thread_join 30

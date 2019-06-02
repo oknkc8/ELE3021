@@ -60,8 +60,10 @@ struct proc {
   int q_lev;                   // Process queue level (MLFQ)
 
   int is_thread;
-  char *ustack;
-  struct proc *joined_thread;
+  int num_act_thread;
+  int num_all_thread;
+  int tid;
+  int wait_tid;
   void *retval;
 };
 

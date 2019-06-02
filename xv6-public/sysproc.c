@@ -50,7 +50,10 @@ sys_sbrk(void)
 
   if(argint(0, &n) < 0)
     return -1;
-  addr = myproc()->sz;
+  if(!myproc()->is_thread)
+    addr = myproc()->sz;
+  else
+    addr = myproc()->parent->sz;
   if(growproc(n) < 0)
     return -1;
   return addr;
@@ -130,49 +133,6 @@ sys_monopolize(void)
 }
 
 int
-sys_tcopy(void)
-{
-  int func, arg, stack;
-
-  if(argint(0, &func) < 0)
-    return -1;
-  if(argint(1, &arg) < 0)
-    return -1;
-  if(argint(2, &stack) < 0)
-    return -1;
-
-  return tcopy(func, (void*)arg, (void*)stack);
-  
-}
-
-int
-sys_tjoin(void)
-{
-  int pid, stack, retval;
-
-  if(argint(0, &pid) < 0)
-    return -1;
-  if(argint(1, &stack) < 0)
-    return -1;
-  if(argint(2, &retval) < 0)
-    return -1;
-
-  return tjoin(pid, (void**)stack, (void**)retval);
-}
-
-int
-sys_texit(void)
-{
-  int retval;
-
-  if(argint(0, &retval) < 0)
-    return -1;
-
-  texit((void*)retval);
-  return 0;
-}
-/*
-int
 sys_thread_create(void)
 {
   int thread, start_routine, arg;
@@ -210,4 +170,4 @@ sys_thread_join(void)
     return -1;
 
   return thread_join((thread_t)thread, (void**)retval);
-}*/
+}
